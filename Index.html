@@ -1,0 +1,1322 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#0f172a" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Jarvis" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="https://api.dicebear.com/7.x/bottts/png?seed=Jarvis&backgroundColor=0f172a" />
+  <title>Jarvis - Assistente Calendario</title>
+  <style>
+    :root {
+      --bg-main: #0f172a;
+      --bg-card: #1e293b;
+      --bg-card-hover: #334155;
+      --accent: #38bdf8;
+      --accent-glow: rgba(56, 189, 248, 0.25);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+      --success: #22c55e;
+      --border: #334155;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: var(--bg-main);
+      color: var(--text-main);
+      height: 100dvh;
+      display: flex;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .app-container {
+      width: 100%;
+      max-width: 540px;
+      background: var(--bg-card);
+      display: flex;
+      flex-direction: column;
+      height: 100dvh;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* TOP BAR */
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 18px 8px;
+    }
+
+    .current-date-badge {
+      background: var(--bg-main);
+      border: 1px solid var(--border);
+      padding: 6px 14px;
+      border-radius: 12px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--accent);
+      text-transform: capitalize;
+    }
+
+    .settings-btn {
+      background: var(--bg-main);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      width: 38px;
+      height: 38px;
+      border-radius: 12px;
+      font-size: 1.4rem;
+      font-weight: bold;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: 0.2s;
+    }
+
+    /* NAVIGAZIONE + MIC */
+    .nav-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 18px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .nav-tabs {
+      display: flex;
+      flex: 1;
+      background: var(--bg-main);
+      padding: 4px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+    }
+
+    .nav-tab {
+      flex: 1;
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      padding: 8px 0;
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    .nav-tab.active {
+      background: var(--accent);
+      color: #0f172a;
+      box-shadow: 0 2px 10px var(--accent-glow);
+    }
+
+    .mic-btn {
+      background: var(--bg-main);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      padding: 0 14px;
+      height: 40px;
+      border-radius: 14px;
+      font-weight: 700;
+      font-size: 0.85rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: 0.2s;
+    }
+
+    .mic-btn.listening {
+      background: var(--danger);
+      border-color: var(--danger);
+      color: white;
+      animation: pulse 1.2s infinite;
+    }
+
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.6); }
+      70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+    }
+
+    /* PAGINE */
+    .page {
+      display: none;
+      flex: 1;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .page.active {
+      display: flex;
+    }
+
+    /* === PAGINA IA === */
+    .chat-box {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .msg-row {
+      display: flex;
+      align-items: flex-end;
+      gap: 10px;
+      max-width: 85%;
+    }
+
+    .msg-row.ai {
+      align-self: flex-start;
+    }
+
+    .msg-row.user {
+      align-self: flex-end;
+      flex-direction: row-reverse;
+    }
+
+    .avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid var(--accent);
+      flex-shrink: 0;
+      background: var(--bg-main);
+    }
+
+    .bubble {
+      padding: 12px 16px;
+      border-radius: 18px;
+      font-size: 0.92rem;
+      line-height: 1.4;
+      word-wrap: break-word;
+    }
+
+    .msg-row.ai .bubble {
+      background: var(--bg-main);
+      border: 1px solid var(--border);
+      border-bottom-left-radius: 4px;
+    }
+
+    .msg-row.user .bubble {
+      background: var(--accent);
+      color: #0f172a;
+      font-weight: 500;
+      border-bottom-right-radius: 4px;
+    }
+
+    .chat-input-area {
+      padding: 12px 16px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: 10px;
+      background: var(--bg-card);
+    }
+
+    .chat-input {
+      flex: 1;
+      background: var(--bg-main);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 11px 16px;
+      color: var(--text-main);
+      font-size: 0.95rem;
+      outline: none;
+    }
+
+    .chat-input:focus {
+      border-color: var(--accent);
+    }
+
+    .send-btn {
+      background: var(--accent);
+      color: #0f172a;
+      border: none;
+      border-radius: 20px;
+      padding: 0 18px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    /* === PAGINA OGGI / GIORNO === */
+    .day-summary-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 18px;
+      background: rgba(15, 23, 42, 0.5);
+      border-bottom: 1px solid var(--border);
+      font-size: 0.9rem;
+    }
+
+    .day-name-label {
+      font-weight: 700;
+      text-transform: capitalize;
+      color: var(--accent);
+    }
+
+    .events-count-label {
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    .hours-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .hour-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+    }
+
+    .hour-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding-top: 12px;
+      flex-shrink: 0;
+    }
+
+    .hour-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+      flex-shrink: 0;
+    }
+
+    .hour-time {
+      width: 44px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      flex-shrink: 0;
+    }
+
+    .events-stack {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .event-pill {
+      width: 100%;
+      background: var(--bg-main);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 9px 12px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 8px;
+      min-height: 42px;
+    }
+
+    .event-pill.important {
+      border-color: var(--warning);
+      background: rgba(245, 158, 11, 0.08);
+    }
+
+    .event-left {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      flex: 1;
+      min-width: 0;
+      cursor: pointer;
+    }
+
+    .imp-toggle {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: 2px solid var(--text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8rem;
+      font-weight: 900;
+      cursor: pointer;
+      flex-shrink: 0;
+      color: transparent;
+      user-select: none;
+      margin-top: 1px;
+    }
+
+    .event-pill.important .imp-toggle {
+      border-color: var(--warning);
+      background: var(--warning);
+      color: #0f172a;
+    }
+
+    .event-title {
+      font-size: 0.9rem;
+      line-height: 1.35;
+      white-space: normal;
+      word-break: break-word;
+      overflow-wrap: break-word;
+      flex: 1;
+      min-width: 0;
+      padding-top: 1px;
+    }
+
+    .event-title.empty {
+      color: var(--text-muted);
+      font-style: italic;
+    }
+
+    .event-title.done {
+      text-decoration: line-through;
+      opacity: 0.6;
+    }
+
+    .event-actions {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+
+    .add-event-btn {
+      background: var(--bg-main);
+      border: 1px solid var(--border);
+      color: var(--accent);
+      width: 32px;
+      height: 42px;
+      border-radius: 12px;
+      font-size: 1.2rem;
+      font-weight: bold;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .icon-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 0.95rem;
+      padding: 4px;
+      border-radius: 6px;
+    }
+
+    /* === PAGINA MESE === */
+    .month-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 20px;
+    }
+
+    .month-nav {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .month-arrow {
+      background: var(--bg-main);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      width: 32px;
+      height: 32px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    .month-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      text-transform: capitalize;
+      min-width: 110px;
+      text-align: center;
+    }
+
+    .year-label {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .weekdays-grid, .days-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      padding: 0 16px;
+      text-align: center;
+      gap: 6px;
+    }
+
+    .weekdays-grid {
+      margin-bottom: 10px;
+      color: var(--text-muted);
+      font-weight: 700;
+      font-size: 0.85rem;
+    }
+
+    .day-cell {
+      aspect-ratio: 1 / 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      border-radius: 14px;
+      background: var(--bg-main);
+      border: 1px solid transparent;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.95rem;
+      position: relative;
+    }
+
+    .day-cell.empty {
+      background: transparent;
+      cursor: default;
+    }
+
+    .day-cell.today {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .day-cell.selected {
+      background: var(--accent);
+      color: #0f172a;
+    }
+
+    .day-has-events {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--warning);
+      position: absolute;
+      bottom: 6px;
+    }
+
+    /* === PAGINA NOTE === */
+    .note-page-content {
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      flex: 1;
+    }
+
+    .note-event-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--bg-main);
+      padding: 14px 16px;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      gap: 12px;
+    }
+
+    .note-event-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .note-event-info strong {
+      word-break: break-word;
+    }
+
+    .note-hour-badge {
+      background: var(--accent);
+      color: #0f172a;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      flex-shrink: 0;
+    }
+
+    .quest-circle {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      border: 2px solid var(--text-muted);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .quest-circle.completed {
+      background: var(--success);
+      border-color: var(--success);
+    }
+
+    .quest-circle.completed::after {
+      content: '✓';
+      color: #0f172a;
+      font-weight: 900;
+      font-size: 0.9rem;
+    }
+
+    .note-textarea {
+      flex: 1;
+      background: var(--bg-main);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 16px;
+      color: var(--text-main);
+      font-size: 0.95rem;
+      resize: none;
+      outline: none;
+      line-height: 1.5;
+    }
+
+    /* === OVERLAY IMPOSTAZIONI === */
+    .settings-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.55);
+      backdrop-filter: blur(3px);
+      display: none;
+      justify-content: flex-end;
+      z-index: 50;
+    }
+
+    .settings-overlay.open {
+      display: flex;
+    }
+
+    .settings-drawer {
+      width: 78%;
+      max-width: 320px;
+      background: var(--bg-card);
+      border-left: 1px solid var(--border);
+      height: 100%;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      overflow-y: auto;
+    }
+
+    .settings-title-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 12px;
+    }
+
+    .settings-section {
+      background: var(--bg-main);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .settings-section h4 {
+      color: var(--accent);
+      font-size: 0.9rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .settings-label {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .settings-input {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 8px 10px;
+      color: var(--text-main);
+      font-size: 0.9rem;
+      width: 100%;
+    }
+
+    .color-presets {
+      display: flex;
+      gap: 10px;
+      margin-top: 4px;
+    }
+
+    .color-swatch {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      cursor: pointer;
+      border: 2px solid white;
+    }
+  </style>
+</head>
+<body>
+
+<div class="app-container">
+  <div class="top-bar">
+    <div class="current-date-badge" id="topDateBadge">15 Novembre</div>
+    <button class="settings-btn" onclick="toggleSettings(true)" title="Impostazioni">*</button>
+  </div>
+
+  <div class="nav-row">
+    <div class="nav-tabs">
+      <button class="nav-tab active" id="tab-ia" onclick="switchPage('ia')">IA</button>
+      <button class="nav-tab" id="tab-oggi" onclick="switchPage('oggi')">Oggi</button>
+      <button class="nav-tab" id="tab-mese" onclick="switchPage('mese')">Mese</button>
+    </div>
+    <button class="mic-btn" id="micBtn" onclick="toggleVoice()">🎙️ MIC</button>
+  </div>
+
+  <!-- PAGINA 1: IA (JARVIS) -->
+  <div class="page active" id="page-ia">
+    <div class="chat-box" id="chatBox"></div>
+    <div class="chat-input-area">
+      <input type="text" class="chat-input" id="chatInput" placeholder="Es: 'Aggiungi palestra alle 18' o 'Cosa ho oggi?'" onkeydown="if(event.key==='Enter') sendMessage()" />
+      <button class="send-btn" onclick="sendMessage()">Invia</button>
+    </div>
+  </div>
+
+  <!-- PAGINA 2: OGGI / GIORNO -->
+  <div class="page" id="page-oggi">
+    <div class="day-summary-bar">
+      <span class="day-name-label" id="dayNameLabel">Domenica</span>
+      <span class="events-count-label" id="eventsCountLabel">Impegni: 0</span>
+    </div>
+    <div class="hours-list" id="hoursList"></div>
+  </div>
+
+  <!-- PAGINA 3: MESE -->
+  <div class="page" id="page-mese">
+    <div class="month-header">
+      <div class="month-nav">
+        <button class="month-arrow" onclick="changeMonth(-1)">&lt;</button>
+        <div class="month-title" id="monthTitle">Novembre</div>
+        <button class="month-arrow" onclick="changeMonth(1)">&gt;</button>
+      </div>
+      <div class="year-label" id="yearLabel">2026</div>
+    </div>
+    <div class="weekdays-grid">
+      <div>L</div><div>M</div><div>M</div><div>G</div><div>V</div><div>S</div><div>D</div>
+    </div>
+    <div class="days-grid" id="daysGrid"></div>
+  </div>
+
+  <!-- PAGINA 4: NOTE -->
+  <div class="page" id="page-note">
+    <div class="note-page-content">
+      <button class="month-arrow" style="width:auto; padding:0 12px;" onclick="switchPage('oggi')">← Torna al giorno</button>
+      <div class="note-event-header">
+        <div class="note-event-info">
+          <span class="note-hour-badge" id="noteHourLabel">08.00</span>
+          <strong id="noteTitleLabel">Nome Impegno</strong>
+        </div>
+        <div class="quest-circle" id="questCircle" onclick="toggleQuestComplete()" title="Segna come completato"></div>
+      </div>
+      <textarea class="note-textarea" id="noteTextarea" placeholder="Scrivi qui le tue note per questo impegno..." oninput="saveNoteText()"></textarea>
+    </div>
+  </div>
+
+  <!-- PANNELLO IMPOSTAZIONI -->
+  <div class="settings-overlay" id="settingsOverlay" onclick="if(event.target===this) toggleSettings(false)">
+    <div class="settings-drawer">
+      <div class="settings-title-row">
+        <h3>Impostazioni</h3>
+        <button class="icon-btn" onclick="toggleSettings(false)">✕</button>
+      </div>
+
+      <div class="settings-section">
+        <h4>Account</h4>
+        <label class="settings-label">Il tuo nome</label>
+        <input type="text" class="settings-input" id="userNameInput" oninput="updateProfile()" />
+        <label class="settings-label">Foto Profilo Utente</label>
+        <input type="file" accept="image/*" class="settings-input" onchange="uploadAvatar(event, 'user')" />
+      </div>
+
+      <div class="settings-section">
+        <h4>IA (Jarvis)</h4>
+        <label class="settings-label">Foto Profilo Jarvis</label>
+        <input type="file" accept="image/*" class="settings-input" onchange="uploadAvatar(event, 'ai')" />
+      </div>
+
+      <div class="settings-section">
+        <h4>Colori Interfaccia</h4>
+        <label class="settings-label">Scegli tema principale</label>
+        <div class="color-presets">
+          <div class="color-swatch" style="background:#38bdf8;" onclick="setTheme('#38bdf8', '#0f172a', '#1e293b')"></div>
+          <div class="color-swatch" style="background:#a855f7;" onclick="setTheme('#a855f7', '#13091f', '#221436')"></div>
+          <div class="color-swatch" style="background:#22c55e;" onclick="setTheme('#22c55e', '#071911', '#11291e')"></div>
+          <div class="color-swatch" style="background:#f97316;" onclick="setTheme('#f97316', '#1c110a', '#2e1d12')"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const mesiItaliani = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"];
+  const giorniItaliani = ["Domenica", "Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato"];
+
+  let currentDate = new Date();
+  let viewingDate = new Date(currentDate);
+  let activePage = 'ia';
+
+  let appData = {
+    userName: "Lorenzo",
+    userAvatar: "",
+    aiAvatar: "",
+    theme: { accent: '#38bdf8', bgMain: '#0f172a', bgCard: '#1e293b' },
+    events: {},
+    messages: [
+      { sender: 'ai', text: 'Ciao! Sono Jarvis. Chiedimi cosa hai in programma oggi oppure dimmi "Aggiungi palestra alle 18".' }
+    ]
+  };
+
+  let currentNoteContext = { dateKey: null, hour: null, index: 0 };
+
+  // Salvataggio locale sul telefono
+  function saveData() {
+    try {
+      localStorage.setItem('jarvis_calendar_data', JSON.stringify(appData));
+    } catch (e) {
+      console.warn("Memoria piena:", e);
+    }
+  }
+
+  function loadData() {
+    const saved = localStorage.getItem('jarvis_calendar_data');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        appData = { ...appData, ...parsed };
+      } catch (e) {}
+    }
+    document.getElementById('userNameInput').value = appData.userName;
+    if (appData.theme) {
+      setTheme(appData.theme.accent, appData.theme.bgMain, appData.theme.bgCard, false);
+    }
+  }
+
+  function initApp() {
+    loadData();
+    renderChat();
+    renderDayView();
+    renderMonthView();
+    updateTopBadge();
+
+    // Registrazione Service Worker per installazione PWA
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js').catch(() => {});
+    }
+  }
+
+  function switchPage(pageId) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+
+    document.getElementById('page-' + pageId).classList.add('active');
+    if(pageId === 'ia' || pageId === 'oggi' || pageId === 'mese') {
+      const tab = document.getElementById('tab-' + pageId);
+      if(tab) tab.classList.add('active');
+    }
+    activePage = pageId;
+
+    if(pageId === 'oggi') renderDayView();
+    if(pageId === 'mese') renderMonthView();
+  }
+
+  function updateTopBadge() {
+    const d = viewingDate.getDate();
+    const m = mesiItaliani[viewingDate.getMonth()];
+    document.getElementById('topDateBadge').innerText = `${d} ${m}`;
+  }
+
+  function getDateKey(date) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
+  function ensureHourArray(key, hour) {
+    if(!appData.events[key]) appData.events[key] = {};
+    if(!Array.isArray(appData.events[key][hour]) || appData.events[key][hour].length === 0) {
+      appData.events[key][hour] = [{ title: "", note: "", important: false, done: false }];
+    }
+    return appData.events[key][hour];
+  }
+
+  function renderDayView() {
+    const key = getDateKey(viewingDate);
+    if(!appData.events[key]) appData.events[key] = {};
+
+    const dayName = giorniItaliani[viewingDate.getDay()];
+    const mName = mesiItaliani[viewingDate.getMonth()];
+    document.getElementById('dayNameLabel').innerText = `${dayName}, ${viewingDate.getDate()} ${mName}`;
+
+    let count = 0;
+    Object.values(appData.events[key]).forEach(arr => {
+      if(Array.isArray(arr)) {
+        count += arr.filter(ev => ev.title && ev.title.trim() !== "").length;
+      }
+    });
+    document.getElementById('eventsCountLabel').innerText = `Impegni: ${count}`;
+
+    const container = document.getElementById('hoursList');
+    container.innerHTML = '';
+
+    for(let i = 0; i < 24; i++) {
+      const hourStr = String(i).padStart(2, '0') + ".00";
+      const hourEvents = ensureHourArray(key, hourStr);
+
+      const row = document.createElement('div');
+      row.className = 'hour-row';
+
+      const meta = document.createElement('div');
+      meta.className = 'hour-meta';
+
+      const dot = document.createElement('div');
+      dot.className = 'hour-dot';
+
+      const timeEl = document.createElement('div');
+      timeEl.className = 'hour-time';
+      timeEl.innerText = hourStr;
+
+      meta.appendChild(dot);
+      meta.appendChild(timeEl);
+
+      const stack = document.createElement('div');
+      stack.className = 'events-stack';
+
+      hourEvents.forEach((eventData, idx) => {
+        const pill = document.createElement('div');
+        pill.className = `event-pill ${eventData.important ? 'important' : ''}`;
+
+        const leftDiv = document.createElement('div');
+        leftDiv.className = 'event-left';
+
+        const impToggle = document.createElement('div');
+        impToggle.className = 'imp-toggle';
+        impToggle.innerText = '!';
+        impToggle.onclick = (e) => {
+          e.stopPropagation();
+          toggleImportant(key, hourStr, idx);
+        };
+
+        const titleEl = document.createElement('div');
+        titleEl.className = `event-title ${!eventData.title ? 'empty' : ''} ${eventData.done ? 'done' : ''}`;
+        titleEl.innerText = eventData.title || 'vuota';
+
+        leftDiv.onclick = () => openNotePage(key, hourStr, idx);
+        leftDiv.appendChild(impToggle);
+        leftDiv.appendChild(titleEl);
+
+        const actions = document.createElement('div');
+        actions.className = 'event-actions';
+
+        const editBtn = document.createElement('button');
+        editBtn.className = 'icon-btn';
+        editBtn.innerHTML = '✏️';
+        editBtn.onclick = (e) => {
+          e.stopPropagation();
+          editEventTitle(key, hourStr, idx);
+        };
+
+        const delBtn = document.createElement('button');
+        delBtn.className = 'icon-btn';
+        delBtn.innerHTML = '🗑️';
+        delBtn.onclick = (e) => {
+          e.stopPropagation();
+          deleteEvent(key, hourStr, idx);
+        };
+
+        actions.appendChild(editBtn);
+        actions.appendChild(delBtn);
+
+        pill.appendChild(leftDiv);
+        pill.appendChild(actions);
+        stack.appendChild(pill);
+      });
+
+      const addBtn = document.createElement('button');
+      addBtn.className = 'add-event-btn';
+      addBtn.innerText = '+';
+      addBtn.onclick = () => addExtraEvent(key, hourStr);
+
+      row.appendChild(meta);
+      row.appendChild(stack);
+      row.appendChild(addBtn);
+
+      container.appendChild(row);
+    }
+  }
+
+  function addExtraEvent(key, hour) {
+    const arr = ensureHourArray(key, hour);
+    const nuovo = prompt("Aggiungi un nuovo impegno per le ore " + hour + ":");
+    if(nuovo !== null && nuovo.trim() !== "") {
+      if(arr.length === 1 && arr[0].title.trim() === "") {
+        arr[0].title = nuovo.trim();
+      } else {
+        arr.push({ title: nuovo.trim(), note: "", important: false, done: false });
+      }
+      saveData();
+      renderDayView();
+      renderMonthView();
+    }
+  }
+
+  function toggleImportant(key, hour, idx) {
+    const arr = ensureHourArray(key, hour);
+    arr[idx].important = !arr[idx].important;
+    saveData();
+    renderDayView();
+  }
+
+  function editEventTitle(key, hour, idx) {
+    const arr = ensureHourArray(key, hour);
+    const current = arr[idx].title;
+    const nuovo = prompt("Inserisci il nome dell'impegno per le ore " + hour + ":", current);
+    if(nuovo !== null) {
+      arr[idx].title = nuovo.trim();
+      saveData();
+      renderDayView();
+      renderMonthView();
+    }
+  }
+
+  function deleteEvent(key, hour, idx) {
+    const arr = ensureHourArray(key, hour);
+    if(arr.length > 1) {
+      arr.splice(idx, 1);
+    } else {
+      arr[0] = { title: "", note: "", important: false, done: false };
+    }
+    saveData();
+    renderDayView();
+    renderMonthView();
+  }
+
+  function openNotePage(key, hour, idx) {
+    currentNoteContext = { dateKey: key, hour: hour, index: idx };
+    const arr = ensureHourArray(key, hour);
+    const ev = arr[idx];
+
+    document.getElementById('noteHourLabel').innerText = hour;
+    document.getElementById('noteTitleLabel').innerText = ev.title || "Impegno senza nome";
+    document.getElementById('noteTextarea').value = ev.note || "";
+
+    const circle = document.getElementById('questCircle');
+    if(ev.done) circle.classList.add('completed');
+    else circle.classList.remove('completed');
+
+    switchPage('note');
+  }
+
+  function toggleQuestComplete() {
+    const { dateKey, hour, index } = currentNoteContext;
+    if(!dateKey || !hour) return;
+    const ev = appData.events[dateKey][hour][index];
+    ev.done = !ev.done;
+    const circle = document.getElementById('questCircle');
+    if(ev.done) circle.classList.add('completed');
+    else circle.classList.remove('completed');
+    saveData();
+    renderDayView();
+  }
+
+  function saveNoteText() {
+    const { dateKey, hour, index } = currentNoteContext;
+    if(!dateKey || !hour) return;
+    appData.events[dateKey][hour][index].note = document.getElementById('noteTextarea').value;
+    saveData();
+  }
+
+  function renderMonthView() {
+    const year = viewingDate.getFullYear();
+    const month = viewingDate.getMonth();
+
+    document.getElementById('monthTitle').innerText = mesiItaliani[month];
+    document.getElementById('yearLabel').innerText = year;
+
+    const grid = document.getElementById('daysGrid');
+    grid.innerHTML = '';
+
+    const firstDayIndex = new Date(year, month, 1).getDay();
+    const offset = (firstDayIndex === 0) ? 6 : firstDayIndex - 1;
+    const totalDays = new Date(year, month + 1, 0).getDate();
+
+    for(let i = 0; i < offset; i++) {
+      const cell = document.createElement('div');
+      cell.className = 'day-cell empty';
+      grid.appendChild(cell);
+    }
+
+    const todayKey = getDateKey(currentDate);
+
+    for(let d = 1; d <= totalDays; d++) {
+      const cell = document.createElement('div');
+      cell.className = 'day-cell';
+      cell.innerText = d;
+
+      const cellDate = new Date(year, month, d);
+      const cellKey = getDateKey(cellDate);
+
+      if(cellKey === todayKey) cell.classList.add('today');
+      if(cellKey === getDateKey(viewingDate)) cell.classList.add('selected');
+
+      if(appData.events[cellKey]) {
+        const hasEv = Object.values(appData.events[cellKey]).some(arr => 
+          Array.isArray(arr) && arr.some(e => e.title && e.title.trim() !== "")
+        );
+        if(hasEv) {
+          const dot = document.createElement('div');
+          dot.className = 'day-has-events';
+          cell.appendChild(dot);
+        }
+      }
+
+      cell.onclick = () => {
+        viewingDate = new Date(cellDate);
+        updateTopBadge();
+        switchPage('oggi');
+      };
+
+      grid.appendChild(cell);
+    }
+  }
+
+  function changeMonth(direction) {
+    viewingDate.setMonth(viewingDate.getMonth() + direction);
+    renderMonthView();
+  }
+
+  // --- JARVIS PARSER & VOCE ---
+  function renderChat() {
+    const chatBox = document.getElementById('chatBox');
+    chatBox.innerHTML = '';
+
+    appData.messages.forEach(msg => {
+      const row = document.createElement('div');
+      row.className = `msg-row ${msg.sender}`;
+
+      const avatar = document.createElement('img');
+      avatar.className = 'avatar';
+      if(msg.sender === 'ai') {
+        avatar.src = appData.aiAvatar || 'https://api.dicebear.com/7.x/bottts/svg?seed=Jarvis';
+      } else {
+        avatar.src = appData.userAvatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + appData.userName;
+      }
+
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble';
+      bubble.innerText = msg.text;
+
+      if(msg.sender === 'ai') {
+        row.appendChild(avatar);
+        row.appendChild(bubble);
+      } else {
+        row.appendChild(bubble);
+        row.appendChild(avatar);
+      }
+
+      chatBox.appendChild(row);
+    });
+    chatBox.scrollTop = chatBox.scrollHeight;
+  }
+
+  function speakText(text) {
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      const utter = new SpeechSynthesisUtterance(text);
+      utter.lang = 'it-IT';
+      window.speechSynthesis.speak(utter);
+    }
+  }
+
+  function processJarvisCommand(text, speak = false) {
+    const lower = text.toLowerCase();
+    const key = getDateKey(viewingDate);
+    let reply = "";
+
+    // 1. Controlla se chiede gli impegni del giorno
+    if (lower.includes('cosa ho') || lower.includes('impegni') || lower.includes('programma')) {
+      const dayEvents = appData.events[key] || {};
+      let list = [];
+      for (let h = 0; h < 24; h++) {
+        const hStr = String(h).padStart(2, '0') + ".00";
+        if (dayEvents[hStr]) {
+          dayEvents[hStr].forEach(ev => {
+            if (ev.title && ev.title.trim() !== "") {
+              list.push(`alle ${hStr} ${ev.title}`);
+            }
+          });
+        }
+      }
+      if (list.length === 0) {
+        reply = `Non hai nessun impegno in programma per questo giorno, ${appData.userName}.`;
+      } else {
+        reply = `Ecco i tuoi impegni, ${appData.userName}: ${list.join(', ')}.`;
+      }
+    } 
+    // 2. Controlla se vuole aggiungere un impegno con orario
+    else {
+      const timeMatch = text.match(/(?:alle|ore)\s*(\d{1,2})(?:[:.]\d{2})?/i);
+      let hourNum = timeMatch ? parseInt(timeMatch[1], 10) : 9;
+      if (hourNum < 0 || hourNum > 23) hourNum = 9;
+      const hourStr = String(hourNum).padStart(2, '0') + ".00";
+
+      // Pulisce la frase lasciando solo il nome dell'impegno
+      let cleanTitle = text
+        .replace(/^(aggiungi|segna|metti|ricordami|inserisci|crea)\s+/i, '')
+        .replace(/(?:alle|ore)\s*\d{1,2}(?:[:.]\d{2})?/i, '')
+        .replace(/\b(oggi|domani)\b/i, '')
+        .trim();
+
+      if (!cleanTitle) cleanTitle = "Nuovo impegno";
+      cleanTitle = cleanTitle.charAt(0).toUpperCase() + cleanTitle.slice(1);
+
+      const arr = ensureHourArray(key, hourStr);
+      if (arr.length === 1 && arr[0].title.trim() === "") {
+        arr[0] = { title: cleanTitle, note: "", important: false, done: false };
+      } else {
+        arr.push({ title: cleanTitle, note: "", important: false, done: false });
+      }
+
+      saveData();
+      renderDayView();
+      renderMonthView();
+      reply = `Fatto, ${appData.userName}! Ho aggiunto "${cleanTitle}" alle ${hourStr}.`;
+    }
+
+    appData.messages.push({ sender: 'ai', text: reply });
+    saveData();
+    renderChat();
+    if (speak) speakText(reply);
+  }
+
+  function sendMessage(fromVoice = false) {
+    const input = document.getElementById('chatInput');
+    const text = input.value.trim();
+    if(!text) return;
+
+    appData.messages.push({ sender: 'user', text: text });
+    input.value = '';
+    saveData();
+    renderChat();
+
+    setTimeout(() => processJarvisCommand(text, fromVoice), 300);
+  }
+
+  function toggleVoice() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const micBtn = document.getElementById('micBtn');
+
+    if (!SpeechRecognition) {
+      alert("Il tuo browser non supporta il riconoscimento vocale diretto. Usa Chrome o Safari aggiornato.");
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'it-IT';
+    recognition.interimResults = false;
+
+    recognition.onstart = () => {
+      micBtn.classList.add('listening');
+      micBtn.innerText = '🎙️ Parla...';
+    };
+
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript;
+      document.getElementById('chatInput').value = transcript;
+      sendMessage(true);
+    };
+
+    recognition.onerror = () => {
+      micBtn.classList.remove('listening');
+      micBtn.innerText = '🎙️ MIC';
+    };
+
+    recognition.onend = () => {
+      micBtn.classList.remove('listening');
+      micBtn.innerText = '🎙️ MIC';
+    };
+
+    recognition.start();
+  }
+
+  // --- IMPOSTAZIONI ---
+  function toggleSettings(open) {
+    const overlay = document.getElementById('settingsOverlay');
+    if(open) overlay.classList.add('open');
+    else overlay.classList.remove('open');
+  }
+
+  function updateProfile() {
+    appData.userName = document.getElementById('userNameInput').value || "Utente";
+    saveData();
+    renderChat();
+  }
+
+  function uploadAvatar(event, type) {
+    const file = event.target.files[0];
+    if(file) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        if(type === 'user') appData.userAvatar = e.target.result;
+        else appData.aiAvatar = e.target.result;
+        saveData();
+        renderChat();
+      };
+      reader.readAsDataURL(file);
+    }
+  }
+
+  function setTheme(accent, bgMain, bgCard, shouldSave = true) {
+    const root = document.documentElement;
+    root.style.setProperty('--accent', accent);
+    root.style.setProperty('--accent-glow', accent + '40');
+    root.style.setProperty('--bg-main', bgMain);
+    root.style.setProperty('--bg-card', bgCard);
+    if (shouldSave) {
+      appData.theme = { accent, bgMain, bgCard };
+      saveData();
+    }
+  }
+
+  window.onload = initApp;
+</script>
+</body>
+</html>
